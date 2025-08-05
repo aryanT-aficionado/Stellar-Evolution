@@ -39,22 +39,7 @@ Ultimately, this work aims to establish a statistical framework that future stud
 ### 2.1 Data Collection
 
 This project is built on high-precision astrometric and photometric data from **Gaia Data Release 3 (DR3)**, accessed via the [Gaia Archive](https://gea.esac.esa.int/archive/) using the `astroquery` Python package. 
-- Extracted specific columns from the large Gaia dataset:
-    - **ra**, 
-    - **dec**, 
-    - **parallax**, 
-    - **parallax_error**, 
-    - **phot_g_mean_mag**,  -- Apparent magnitude in G-band
-    - **phot_bp_mean_mag**, -- BP-band magnitude
-    - **phot_rp_mean_mag**, -- RP-band magnitude
-    - **bp_rp**, -- BP - RP color (temperature proxy)
-    - **teff_gspphot**, -- Effective temperature (from Gaia Photometry)
-    - **luminosity_gspphot**, -- Luminosity (from Gaia Photometry)
-    - **radius_gspphot**,-- Stellar radius (from Gaia Photometry)
-    - **radial_velocity**, -- Line-of-sight velocity (if available)
-    - **ruwe**, -- Renormalized Unit Weight Error (data quality flag)
-    - **phot_variable_flag**, -- Star’s variability flag
-    - **feh_gspphot** -- Metallicity [Fe/H] (from Gaia Photometry)
+
 
 | Column               | Description                                                                 | Project Relevance                                                                 |
 |----------------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
@@ -120,6 +105,63 @@ Additionally, we excluded stars with missing `feh_gspphot` or `luminosity_gsppho
 
 This 30% reduction reflects the trade-off between sample size and data integrity — a deliberate choice to prioritize **measurement reliability** over completeness.
 
+---
+
+## 3. HR Diagram and Evolutionary Classification
+
+The Hertzsprung-Russell (HR) diagram is the cornerstone of stellar astrophysics — a plot of luminosity versus temperature (or color) that reveals the evolutionary state of stars. In this section, we construct a high-fidelity HR diagram from our cleaned Gaia DR3 sample and use unsupervised clustering to objectively identify major evolutionary phases.
+
+### 3.1 HR Diagram Construction
+
+We begin by visualizing the classical HR diagram using **absolute G-band magnitude** ($M_G$) on the y-axis (inverted, as standard) and **BP − RP color** as a proxy for effective temperature on the x-axis.
+
+To enhance physical interpretability, the first plot colors each star by its **effective temperature** ($T_{\text{eff}}$) from `teff_gspphot`, using a reversed `viridis` colormap so that **hotter (bluer) stars appear in yellow/blue**, and **cooler (redder) stars in deep red**. A logarithmic normalization ensures balanced color distribution across the wide range of stellar temperatures.
+
+![HR Diagram Colored by Temperature](photos/output_hr_init.png)
+
+This temperature-colored view clearly reveals major sequences:
+- The **main sequence** diagonal stretching from hot, bright blue stars to cool, faint red dwarfs
+- A dense **red giant branch** rising vertically from the lower right
+- A prominent **horizontal branch** and **asymptotic giant branch**
+- A tight sequence of **white dwarfs** in the lower-left corner
+
+In a second visualization, we highlight **stellar density** in the HR diagram using kernel density estimation (KDE). Each point is colored by local point density, revealing regions of high stellar concentration — particularly along the main sequence and red clump — while suppressing noise from sparse or scattered outliers. This "density map" view helps identify natural groupings in the data, guiding our choice of clustering strategy.
+
+![HR Diagram Density Map](photos/k_means.png)
+
+> 🔭 **Why This Matters**  
+> Unlike theoretical HR diagrams, this is a *data-driven* representation of stellar populations within 1 kpc of the Sun. It reflects real observational biases, completeness limits, and Galactic structure — grounding our analysis in empirical reality.
+
+### 3.2 Clustering Methodology
+
+To move from visual inspection to quantitative classification, we applied **K-means clustering** in the $(BP - RP, M_G)$ plane to group stars into distinct evolutionary populations.
+
+#### Why K-means?
+
+While several clustering algorithms were considered — including **Gaussian Mixture Models (GMM)** and **DBSCAN** — we selected **K-means** for the following reasons:
+
+- **Interpretability**: K-means produces compact, spherical clusters ideal for identifying well-separated sequences like the main sequence, giants, and white dwarfs.
+- **Scalability**: With ~70k stars, K-means is computationally efficient and deterministic with fixed initialization.
+- **Geometric alignment**: The HR diagram features elongated but relatively convex structures, which K-means can approximate well with sufficient clusters.
+- **Reproducibility**: Unlike DBSCAN (sensitive to density variations) or GMM (assumes elliptical distributions), K-means offers stable results across runs when $k$ is well-chosen.
+
+We standardized the features and use the **silhouette analysis** to determine the optimal number of clusters. A value of $k = 5$ provided the best balance between intra-cluster cohesion and astrophysical meaning,aligning with major evolutionary stages.
+
+! [K Means](photos/k_means.png)
+
+The resulting clusters were then analyzed for their photometric and physical characteristics to assign evolutionary labels.
+
+### 3.3 Phase Classification Results
+
+The five clusters identified by K-means correspond closely to canonical stellar evolutionary phases. Below is the classification summary:
+
+| Evolutionary Phase | Count | Percentage | Characteristic Features |
+|--------------------|-------|------------|--------------------------|
+| **Supergiants**     | 18,040 | 25.73% | Highly luminous ($M_G < -1$), cool ($BP - RP > 1.2$), likely massive stars in late stages (e.g., red supergiants or AGB stars) |
+| **Main Sequence**   | 16,955 | 24.18% | Forms the diagonal band from upper-left to lower-right; spans $0.2 < BP - RP < 2.5$, representing core hydrogen-burning stars |
+| **White Dwarfs**    | 13,799 | 19.68% | Faint ($M_G > 10$) and hot ($BP - RP < 0.5$); concentrated in the lower-left, marking the final stage of low- to intermediate-mass stars |
+| **Giants**          | 13,556 | 19.33% | Bright ($-1 < M_G < 3$) and red ($BP - RP > 1.0$); includes red giant branch (RGB) and red clump stars |
+| **Subgiants**       | 7,768  | 11.08% | Transition population between main sequence and giants; located in the "hook" region of the HR diagram |
 
 ---
 
