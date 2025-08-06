@@ -88,11 +88,11 @@ To ensure data reliability, we applied the following cuts:
 - Initial: 100,000 stars
 - Final: **70,118 stars** (~30% reduction)
 
-![Effective Temperature Distribution](plots/teff_histogram.png)
+![Effective Temperature Distribution](photos/eff_temp.png)
 
 > *Figure: Distribution of effective temperatures. Peak at ~5800 K reflects solar-type stars; tail extends to cool M dwarfs and hot A/F stars.*
 
-![Distance Distribution](plots/distance_histogram.png)
+![Distance Distribution](photos/dist_dist.png)
 
 > *Figure: Distance distribution of the final sample. Majority within 500 pc, with sharp cutoff near 1 kpc due to volume limit.*
 
@@ -118,7 +118,7 @@ This temperature-colored view clearly reveals major sequences:
 
 In a second visualization, we highlight **stellar density** in the HR diagram using kernel density estimation (KDE). Each point is colored by local point density, revealing regions of high stellar concentration — particularly along the main sequence and red clump — while suppressing noise from sparse or scattered outliers. This "density map" view helps identify natural groupings in the data, guiding our choice of clustering strategy.
 
-![HR Diagram Density Map](photos/k_means.png)
+![HR Diagram Density Map](photos/stellar_density.png)
 
 > 🔭 **Why This Matters**  
 > Unlike theoretical HR diagrams, this is a *data-driven* representation of stellar populations within 1 kpc of the Sun. It reflects real observational biases, completeness limits, and Galactic structure — grounding our analysis in empirical reality.
