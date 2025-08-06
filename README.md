@@ -58,7 +58,7 @@ Raw Gaia data requires careful cleaning and transformation before scientific ana
 
 **Distance estimation** (for $\varpi > 0$):
 $$
-d\ \text{(pc)} = \frac{1000}{\varpi}
+\d\ \text{(pc)} = \frac{1000}{\varpi}
 $$
 
 ⚠️ *Note:* While more sophisticated Bayesian distance estimators (e.g., [Bailer-Jones 2021](https://ui.adsabs.harvard.edu/abs/2021AJ....161..147B/abstract)) exist, we use the simple inversion here as a baseline, with strict filtering to minimize bias.
@@ -271,7 +271,4 @@ We use Markov Chain Monte Carlo (MCMC) to sample the posterior distribution of $
 - **Key result**: The inferred exponent $ b = -2.51^{+0.54}_{-0.54} $ (95% HDI) matches the theoretical prediction of $-2.5$ within uncertainty.
 - **Convergence**: $ \hat{R} = 1.0 $ for all parameters, and ESS > 1600 confirms reliable sampling.
 
-
-## 📂 Future Steps
-- Clean and preprocess the data.  
-- Develop a mathematical model for stellar evolution.  
+---
