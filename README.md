@@ -2,7 +2,7 @@
 
 > *"The stars are not for the models alone, but for the data that shapes them."*
 
-This project combines astrophysical insight with modern statistical learning to build data-driven models of stellar evolution using high-precision observations from the **Gaia Data Release 3 (DR3)**. By integrating techniques from survival analysis, clustering, and Bayesian inference, we aim to move beyond purely theoretical frameworks and ground our understanding of how stars live and die in empirical reality.
+This project builds **data-driven models of stellar evolution** using **Gaia DR3** and modern statistical methods — survival analysis, clustering, and Bayesian inference — to test one of astrophysics’ oldest predictions: that more massive stars die younger.
 
 ## 1. Introduction and Motivation 🦕
 
@@ -10,15 +10,13 @@ This project combines astrophysical insight with modern statistical learning to 
 
 Stellar evolution theory has long been guided by physical models derived from stellar structure equations and nuclear physics. While powerful, these models often rely on simplifying assumptions—about convection, mass loss, metallicity, and binary interactions—that are difficult to test observationally at scale.
 
-Enter **Gaia**: a revolutionary space observatory providing astrometric, photometric, and spectroscopic data for over **1.8 billion stars**. With parallaxes, proper motions, and multi-band photometry, Gaia enables us to construct detailed Hertzsprung-Russell (HR) diagrams with unprecedented accuracy and sample size.
+**Gaia**: a revolutionary space observatory providing astrometric, photometric, and spectroscopic data for over **1.8 billion stars**. With parallaxes, proper motions, and multi-band photometry, Gaia enables us to construct detailed Hertzsprung-Russell (HR) diagrams with unprecedented accuracy and sample size.
 
 This project leverages this wealth of data to:
 
 - **Build empirical models** of stellar evolution stages,
 - **Validate theoretical predictions**—like the mass-lifetime relation—using rigorous statistical methods,
 - And create a **fully reproducible pipeline** that connects raw Gaia queries to publication-ready figures and inference.
-
-We treat stars not just as points in an HR diagram, but as outcomes of stochastic processes shaped by mass, age, and environment—opening the door to probabilistic modeling in stellar astrophysics.
 
 ### 1.2 Core Objectives 💡
 
@@ -28,9 +26,6 @@ The project is structured around four key goals:
 2. **Classify stars into evolutionary phases** (e.g., pre-main-sequence, main sequence, red giant, white dwarf) using unsupervised clustering techniques (e.g., Gaussian Mixture Models, DBSCAN).
 3. **Model main-sequence lifetimes** using survival analysis, treating the transition off the main sequence as an "event time" problem.
 4. **Validate the theoretical mass-lifetime relation** via Bayesian hierarchical modeling, quantifying uncertainties and deviations from canonical power laws.
-
-Ultimately, this work aims to establish a statistical framework that future studies can extend—making stellar evolution not just a theoretical narrative, but a quantitatively testable science.
-
 
 ---
 
@@ -61,17 +56,14 @@ Raw Gaia data requires careful cleaning and transformation before scientific ana
 
 #### 📏 Distance Estimation
 
-We compute distances using the inverse of parallax, with appropriate quality control:
-
+**Distance estimation** (for $\varpi > 0$):
 $$
-d\ \text{(pc)} = \frac{1000}{\varpi}, \quad \text{where } \varpi > 0
+d\ \text{(pc)} = \frac{1000}{\varpi}
 $$
 
 ⚠️ *Note:* While more sophisticated Bayesian distance estimators (e.g., [Bailer-Jones 2021](https://ui.adsabs.harvard.edu/abs/2021AJ....161..147B/abstract)) exist, we use the simple inversion here as a baseline, with strict filtering to minimize bias.
 
 #### 🔆 Absolute Magnitude Calculation
-
-We correct apparent G-band magnitude for distance to obtain absolute magnitude:
 
 $$
 M_G = G - 5 \log_{10}(d) + 5
@@ -81,29 +73,28 @@ where:
 - $ G = \text{phot\_g\_mean\_mag} $
 - $ d = \text{distance in parsecs} $
 
-This places all stars on a common luminosity scale, enabling direct comparison in the Hertzsprung-Russell diagram.
-
 #### 🧹 Quality Filtering
 
 To ensure data reliability, we applied the following cuts:
 
-1. **Parallax significance**: $ \frac{\varpi}{\sigma_\varpi} > 5 $ → removes high-uncertainty parallaxes
-2. **Positive parallax only**: $ \varpi > 0 $
-3. **Effective temperature range**: $ 2500\ \text{K} < T_{\text{eff}} < 15000\ \text{K} $ → excludes outliers and poorly fitted stars
-4. **Astrometric quality**: $ \text{ruwe} < 1.4 $ → removes sources with poor astrometric fits
-5. **Photometric variability**: Excluded stars flagged as `phot_variable_flag != 'NOT_AVAILABLE' AND 'VARIABLE'`
-
-Additionally, we excluded stars with missing `feh_gspphot` or `luminosity_gspphot`, as these are critical for physical modeling.
+- Relative parallax error $< 20\%$ ($\sigma_\varpi / \varpi$)
+- $2500\ \text{K} < T_{\text{eff}} < 15000\ \text{K}$
+- $\text{ruwe} < 1.4$
+- Exclude photometrically variable stars
 
 #### ✅ Final Dataset Summary
 
-| Stage | Star Count |
-|------|------------|
-| Initial query result | 100,000 |
-| After quality cuts | **70,118** |
-| Reduction | ~29.9% |
+**Final dataset**:
+- Initial: 100,000 stars
+- Final: **70,118 stars** (~30% reduction)
 
-This 30% reduction reflects the trade-off between sample size and data integrity — a deliberate choice to prioritize **measurement reliability** over completeness.
+![Effective Temperature Distribution](plots/teff_histogram.png)
+
+> *Figure: Distribution of effective temperatures. Peak at ~5800 K reflects solar-type stars; tail extends to cool M dwarfs and hot A/F stars.*
+
+![Distance Distribution](plots/distance_histogram.png)
+
+> *Figure: Distance distribution of the final sample. Majority within 500 pc, with sharp cutoff near 1 kpc due to volume limit.*
 
 ---
 
@@ -147,7 +138,7 @@ While several clustering algorithms were considered — including **Gaussian Mix
 
 We standardized the features and use the **silhouette analysis** to determine the optimal number of clusters. A value of $k = 5$ provided the best balance between intra-cluster cohesion and astrophysical meaning,aligning with major evolutionary stages.
 
-! [K Means](photos/k_means.png)
+![K Means](photos/k_means.png)
 
 The resulting clusters were then analyzed for their photometric and physical characteristics to assign evolutionary labels.
 
@@ -164,6 +155,122 @@ The five clusters identified by K-means correspond closely to canonical stellar 
 | **Subgiants**       | 7,768  | 11.08% | Transition population between main sequence and giants; located in the "hook" region of the HR diagram |
 
 ---
+
+## 4. Stellar Lifetime Modeling
+
+### 4.1 Theoretical Foundation
+
+Main-sequence lifetime is set by fuel supply and consumption rate:
+
+$$
+\tau_{\text{MS}} \propto \frac{M}{L}, \quad L \propto M^{3.5} \quad \Rightarrow \quad \tau_{\text{MS}} \propto M^{-2.5}
+$$
+
+We test this canonical relation using survival modeling and Gaia data.
+
+### 4.2 Mass Estimation
+
+Stellar mass is estimated from photometry using two independent relations:
+
+**From temperature:**
+$$
+\frac{M}{M_\odot} = \left( \frac{T_{\text{eff}}}{5772} \right)^2
+$$
+
+**From luminosity:**
+$$
+\frac{M}{M_\odot} = \left( \frac{L}{L_\odot} \right)^{1/3.5}, \quad \frac{L}{L_\odot} = 10^{(4.74 - M_G)/2.5}
+$$
+
+Observational scatter is modeled via log-normal noise.
+
+![Stellar Mass Comparison](photos/mass_comparison.png)
+
+> *Figure: Mass estimates from temperature vs. luminosity. Points cluster around the $ y = x $ line, indicating consistency between methods.*
+
+![Distribution of Theoretical Lifetimes](photos/theo_lifeline.png)
+
+> *Figure: Distribution of theoretical main-sequence lifetimes using $ \tau \propto M^{-2.5} $ with scatter. Most stars have long lifetimes, with a tail toward short-lived massive stars.*
+
+### 4.3 Survival Analysis Framework
+
+#### 4.3.1 Kaplan-Meier Estimator
+
+**Purpose**: Non-parametric estimation of the survival function — the probability that a star remains on the main sequence beyond age $ t $.
+
+The Kaplan-Meier estimator is defined as:
+
+$$
+\hat{S}(t) = \prod_{t_i \leq t} \left(1 - \frac{d_i}{n_i}\right)
+$$
+
+where $ d_i $ is the number of "events" (leaving the main sequence) at time $ t_i $, and $ n_i $ is the number of stars at risk just before $ t_i $.
+
+🔗 *Original paper*: [Kaplan & Meier (1958), "Nonparametric Estimation from Incomplete Observations"](https://www.jstor.org/stable/2281868)
+
+![Kaplan-Meier Survival Curves](photos/KM.png)
+
+> *Figure: Kaplan-Meier survival curves for four mass bins. Higher-mass stars show faster decline, indicating shorter main-sequence lifetimes.*
+
+
+#### 4.3.2 Weibull Accelerated Failure Time (AFT) Model
+
+**Purpose**: Parametric modeling of stellar lifetime as a function of mass and temperature.
+
+The Weibull AFT model assumes:
+
+$$
+\log T = \beta_0 + \beta_1 \log M + \beta_2 T_{\text{eff}} + \sigma \epsilon
+$$
+
+where $ \epsilon $ follows an extreme value distribution. The coefficient $ \beta_1 $ directly quantifies how mass accelerates or delays evolution off the main sequence.
+
+🔗 *Seminal work*: [Kalbfleisch & Prentice (2002), "The Statistical Analysis of Failure Time Data"](https://onlinelibrary.wiley.com/isbn/9780471363576)
+
+| Parameter       | Value (95% CI)           | Interpretation |
+|-----------------|--------------------------|----------------|
+| mass ($\beta_1$) | -2.66 (-2.68, -2.64)     | Main-sequence lifetime scales as $ M^{-2.66} $ — slightly steeper than canonical $ M^{-2.5} $ |
+| $\lambda$ (scale) | $1.19 \times 10^{10}$ ($1.12 \times 10^{10}$, $1.27 \times 10^{10}$) | Characteristic lifetime near solar mass (~10 Gyr) |
+| $\rho$ (shape)    | 1.98 (1.97, 1.99)         | Shape parameter >1 indicates increasing failure rate (more stars leave MS over time) |
+| $T_{\text{eff}}$  | 0.00 (0.00, 0.00)         | No significant additional predictive power beyond mass |
+
+**Model Fit**:  
+Concordance = 0.92, AIC = 429,318, log-likelihood = -214,655.01  
+Likelihood ratio test: $ p \ll 0.005 $ — model is highly significant
+
+#### 4.3.3 Bayesian Power Law Model
+
+**Purpose**: Full probabilistic inference on the mass-lifetime relation, including uncertainty quantification.
+
+We fit a power-law model:
+
+$$
+\tau(M) = a \cdot M^b
+$$
+
+using **Bayesian hierarchical modeling** with censored likelihoods. The model assumes that true lifetimes follow a log-normal distribution around the predicted value, and uses the observed ages and evolutionary status (on/off main sequence) to constrain $ a $ and $ b $.
+
+Censoring is handled explicitly:
+- If a star is still on the main sequence → **right-censored**: $ \tau > \text{age} $
+- If it has evolved off → **left-censored**: $ \tau < \text{age} $
+
+We use Markov Chain Monte Carlo (MCMC) to sample the posterior distribution of $ b $, the power-law index.
+
+🔗 *Foundational reference*: [Gelman et al., *Bayesian Data Analysis*](https://www.stat.columbia.edu/~gelman/book/)
+
+![Posterior Distributions from Bayesian Power Law Model](photos/bayes.png)
+
+> *Figure: Posterior distributions for $ b $, $ a $, and $ \sigma $. The exponent $ b $ centers tightly around $-2.51$, in strong agreement with the canonical $ M^{-2.5} $ relation.*
+
+| Parameter | Mean       | SD         | 95% HDI Lower | 95% HDI Upper |
+|---------|------------|------------|---------------|---------------|
+| $ b $   | -2.51      | 0.29       | -3.04         | -1.97         |
+| $ a $   | $ 1.13 \times 10^{10} $ | $ 6.06 \times 10^9 $ | $ 2.82 \times 10^9 $ | $ 2.26 \times 10^{10} $ |
+| $ \sigma $ | 0.079 | 0.060      | 0.000         | 0.184         |
+
+- **Key result**: The inferred exponent $ b = -2.51^{+0.54}_{-0.54} $ (95% HDI) matches the theoretical prediction of $-2.5$ within uncertainty.
+- **Convergence**: $ \hat{R} = 1.0 $ for all parameters, and ESS > 1600 confirms reliable sampling.
+
 
 ## 📂 Future Steps
 - Clean and preprocess the data.  
