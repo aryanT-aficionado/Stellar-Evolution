@@ -57,6 +57,7 @@ Raw Gaia data requires careful cleaning and transformation before scientific ana
 #### 📏 Distance Estimation
 
 **Distance estimation** (for $\varpi > 0$):
+
 $$
 \d\ \text{(pc)} = \frac{1000}{\varpi}
 $$
@@ -70,8 +71,8 @@ M_G = G - 5 \log_{10}(d) + 5
 $$
 
 where:
-- $ G = \text{phot\_g\_mean\_mag} $
-- $ d = \text{distance in parsecs} $
+- $G = \text{phot\_g\_mean\_mag}$
+- $d = \text{distance in parsecs}$
 
 #### 🧹 Quality Filtering
 
